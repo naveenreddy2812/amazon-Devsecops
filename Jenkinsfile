@@ -26,9 +26,11 @@ pipeline {
         stage("SonarQube Analysis") {
             steps {
                 withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner \
+                    sh """
+                        $SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectName=amazon \
-                        -Dsonar.projectKey=amazon '''
+                        -Dsonar.projectKey=amazon
+                    """
                 }
             }
         }
@@ -37,11 +39,10 @@ pipeline {
             steps {
                 script {
                     timeout(time: 3, unit: 'MINUTES') {
-                  
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                        waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                    }
                 }
             }
-        }
         }
 
         stage("Install NPM Dependencies") {
@@ -49,21 +50,17 @@ pipeline {
                 sh "npm install"
             }
         }
-        
-       
-
-
 
         stage("Trivy File Scan") {
             steps {
-                sh "trivy fs . > trivyfs.txt"
+                sh "trivy fs . -f json -o trivyfs.json -f table -o trivyfs.txt || true"
             }
         }
 
         stage("Build Docker Image") {
             steps {
                 script {
-                    env.IMAGE_TAG = "harishnshetty/amazon:${BUILD_NUMBER}"
+                    env.IMAGE_TAG = "telus121/amazon:${BUILD_NUMBER}"
 
                     // Optional cleanup
                     sh "docker rmi -f amazon ${env.IMAGE_TAG} || true"
@@ -89,27 +86,24 @@ pipeline {
             }
         }
 
-       
-
-        stage("Trivy Scan Image") {
+        stage("Trivy Scan Docker Image") {
             steps {
                 script {
                     sh """
-                    echo '🔍 Running Trivy scan on ${env.IMAGE_TAG}'
+                        echo '🔍 Running Trivy scan on ${env.IMAGE_TAG}'
 
-                    # JSON report
-                    trivy image -f json -o trivy-image.json ${env.IMAGE_TAG}
+                        # JSON report
+                        trivy image -f json -o trivy-image.json ${env.IMAGE_TAG}
 
-                    # HTML report using built-in HTML format
-                    trivy image -f table -o trivy-image.txt ${env.IMAGE_TAG}
+                        # Table report
+                        trivy image -f table -o trivy-image.txt ${env.IMAGE_TAG}
 
-                    # Fail build if HIGH/CRITICAL vulnerabilities found
-                    # trivy image --exit-code 1 --severity HIGH,CRITICAL ${env.IMAGE_TAG} || true
-                """
+                        # Optional: fail build on HIGH/CRITICAL vulnerabilities
+                        # trivy image --exit-code 1 --severity HIGH,CRITICAL ${env.IMAGE_TAG} || true
+                    """
                 }
             }
         }
-
 
         stage("Deploy to Container") {
             steps {
@@ -121,32 +115,36 @@ pipeline {
         }
     }
 
-      post {
-    always {
-        script {
-            def buildStatus = currentBuild.currentResult
-            def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: ' Github User'
+    post {
+        always {
+            script {
+                def buildStatus = currentBuild.currentResult
+                def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'Github User'
 
-            emailext (
-                subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-                    <p>This is a Jenkins Amazon CICD pipeline status.</p>
-                    <p>Project: ${env.JOB_NAME}</p>
-                    <p>Build Number: ${env.BUILD_NUMBER}</p>
-                    <p>Build Status: ${buildStatus}</p>
-                    <p>Started by: ${buildUser}</p>
-                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                """,
-                to: 'shnavi002@gmail.com',
-                from: 'shnavi002@gmail.com',
-                mimeType: 'text/html',
-                attachmentsPattern: 'trivyfs.txt,trivy-image.json,trivy-image.txt,dependency-check-report.xml'
-                    )
+                // Dynamically attach reports only if they exist
+                def attachments = []
+                ['trivyfs.txt', 'trivyfs.json', 'trivy-image.txt', 'trivy-image.json'].each { file ->
+                    if (fileExists(file)) {
+                        attachments.add(file)
+                    }
+                }
+
+                emailext (
+                    subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: """
+                        <p>This is a Jenkins Amazon CICD pipeline status.</p>
+                        <p>Project: ${env.JOB_NAME}</p>
+                        <p>Build Number: ${env.BUILD_NUMBER}</p>
+                        <p>Build Status: ${buildStatus}</p>
+                        <p>Started by: ${buildUser}</p>
+                        <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    """,
+                    to: 'shnavi002@gmail.com',
+                    from: 'shnavi002@gmail.com',
+                    mimeType: 'text/html',
+                    attachmentsPattern: attachments.join(',')
+                )
+            }
         }
     }
 }
-}
-
-
-
-

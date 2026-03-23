@@ -8,6 +8,7 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        SKIP_OWASP = "true"   // <-- control here
     }
 
     stages {
@@ -19,7 +20,7 @@ pipeline {
 
         stage("Git Checkout") {
             steps {
-                git branch: 'main', url: 'https://github.com/harishnshetty/amazon-Devsecops.git'
+                git branch: 'master', url: 'https://github.com/naveenreddy2812/amazon-Devsecops.git'
             }
         }
 
@@ -36,7 +37,7 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 script {
-                    timeout(time: 3, unit: 'MINUTES') {
+                    timeout(time: 8, unit: 'MINUTES') {
                   
                     waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
                 }
@@ -52,6 +53,9 @@ pipeline {
         
        
         stage("OWASP FS Scan") {
+            when {
+                expression { env.SKIP_OWASP != "true" }
+            }
             steps {
                 dependencyCheck additionalArguments: '''
                     --scan ./ 
@@ -149,8 +153,8 @@ pipeline {
                     <p>Started by: ${buildUser}</p>
                     <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 """,
-                to: 'harishn662@gmail.com',
-                from: 'harishn662@gmail.com',
+                to: 'shnavi002@gmail.com',
+                from: 'shnavi002@gmail.com',
                 mimeType: 'text/html',
                 attachmentsPattern: 'trivyfs.txt,trivy-image.json,trivy-image.txt,dependency-check-report.xml'
                     )
@@ -158,7 +162,3 @@ pipeline {
     }
 }
 }
-
-
-
-

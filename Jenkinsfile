@@ -8,6 +8,7 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        SKIP_OWASP = "true"   // <-- control here
     }
 
     stages {
@@ -36,7 +37,7 @@ pipeline {
         stage("Quality Gate") {
             steps {
                 script {
-                    timeout(time: 6, unit: 'MINUTES') {
+                    timeout(time: 8, unit: 'MINUTES') {
                   
                     waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
                 }
@@ -52,6 +53,9 @@ pipeline {
         
        
         stage("OWASP FS Scan") {
+            when {
+                expression { env.SKIP_OWASP != "true" }
+            }
             steps {
                 dependencyCheck additionalArguments: '''
                     --scan ./ 

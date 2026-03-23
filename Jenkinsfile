@@ -92,18 +92,21 @@ pipeline {
         stage("Tag & Push to DockerHub") {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'Docker-cred', variable: 'dockerpwd')]) {
+                    withCredentials([string(credentialsId: 'docker-cred', variable: 'dockerpwd')]) {
+                        // login to DockerHub
                         sh "docker login -u telus121 -p ${dockerpwd}"
-                        sh "docker tag amazon ${env.IMAGE_TAG}"
-                        sh "docker push ${env.IMAGE_TAG}"
 
-                        // Also push latest
-                        sh "docker tag amazon telu121/amazon:latest"
+                        // tag the image with build number or any tag
+                        sh "docker tag amazon telus121/amazon:${env.BUILD_NUMBER}"
+                        sh "docker push telus121/amazon:${env.BUILD_NUMBER}"
+
+                        // also push latest
+                        sh "docker tag amazon telus121/amazon:latest"
                         sh "docker push telus121/amazon:latest"
-                    }
-                }
-            }
+                   }
         }
+    }
+}
 
        
 

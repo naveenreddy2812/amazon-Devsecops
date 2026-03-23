@@ -98,8 +98,8 @@ pipeline {
                         sh "docker push ${env.IMAGE_TAG}"
 
                         // Also push latest
-                        sh "docker tag amazon naveen121/amazon:latest"
-                        sh "docker push naveen121/amazon:latest"
+                        sh "docker tag amazon telu121/amazon:latest"
+                        sh "docker push telus121/amazon:latest"
                     }
                 }
             }

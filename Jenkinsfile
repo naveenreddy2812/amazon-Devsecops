@@ -92,7 +92,7 @@ pipeline {
         stage("Tag & Push to DockerHub") {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'docker-cred', variable: 'dockerpwd')]) {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
                         // login to DockerHub
                         sh "echo ${dockerpwd} | docker login -u telus121 --password-stdin"
 

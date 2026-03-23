@@ -94,7 +94,7 @@ pipeline {
                 script {
                     withCredentials([string(credentialsId: 'docker-cred', variable: 'dockerpwd')]) {
                         // login to DockerHub
-                        sh "docker login -u telus121 -p ${dockerpwd}"
+                        sh "echo ${dockerpwd} | docker login -u telus121 --password-stdin"
 
                         // tag the image with build number or any tag
                         sh "docker tag amazon telus121/amazon:${env.BUILD_NUMBER}"
